@@ -104,3 +104,44 @@ def test_unknown_completion_and_duplicate_pet():
         scheduler.mark_task_complete("missing")
     with pytest.raises(ValueError):
         scheduler.owner.add_pet(Pet("mochi", "cat"))
+
+
+def test_edit_task_updates_schedule_and_plan_without_changing_id():
+    first, _, scheduler = setup_schedule()
+    original = Task("Walk", "08:00", DAY, priority="low")
+    first.add_task(original)
+    updated = scheduler.update_task(original.id, description="Vet visit", time="14:00",
+        due_date=DAY + timedelta(days=1), frequency="weekly", duration_minutes=30, priority="high")
+    assert updated.id == original.id
+    assert len(first.tasks) == 1
+    assert scheduler.filter_tasks(on_date=DAY) == []
+    assert scheduler.sort_by_time(on_date=updated.due_date) == [(first, updated)]
+    assert scheduler.build_plan(updated.due_date, 30)[0] == [(first, updated)]
+    following = scheduler.mark_task_complete(updated.id)
+    assert following.due_date == updated.due_date + timedelta(days=7)
+    assert following.description == "Vet visit"
+
+
+def test_invalid_edit_preserves_original_and_completed_tasks_are_locked():
+    first, _, scheduler = setup_schedule()
+    original = Task("Walk", "08:00", DAY)
+    first.add_task(original)
+    values = dict(description="Walk", time="09:00", due_date=DAY,
+                  frequency="once", duration_minutes=20, priority="medium")
+    with pytest.raises(ValueError):
+        scheduler.update_task(original.id, **{**values, "description": " "})
+    assert first.tasks[0] is original
+    original.mark_complete()
+    with pytest.raises(ValueError):
+        scheduler.update_task(original.id, **values)
+    with pytest.raises(ValueError):
+        scheduler.update_task("missing", **values)
+
+
+def test_same_pet_conflict_and_dates_do_not_collide():
+    first, _, scheduler = setup_schedule()
+    first.add_task(Task("Food", "08:00", DAY))
+    first.add_task(Task("Walk", "08:00", DAY))
+    first.add_task(Task("Tomorrow", "08:00", DAY + timedelta(days=1)))
+    assert len(scheduler.detect_conflicts()) == 1
+    assert scheduler.detect_conflicts(DAY + timedelta(days=1)) == []

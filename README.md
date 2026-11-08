@@ -18,6 +18,14 @@ On Windows PowerShell, activate with `.venv\Scripts\Activate.ps1`.
 The UI stores its Owner object in Streamlit session state. Data survives UI
 reruns, but is not saved to disk and may be lost when the session ends.
 
+## Features
+
+- Add multiple pets and schedule feeding, walks, medication, or appointments.
+- Edit a pending task's description, date, time, frequency, duration, and priority.
+- View schedules by date, pet, and completion status.
+- Complete tasks and automatically create the next daily or weekly occurrence.
+- See conflict warnings and prioritize care within a total time budget.
+
 ## Implementation summary
 
 `pawpal_system.py` contains four classes independent of the UI. `Task` and `Pet`
@@ -36,6 +44,7 @@ See `diagrams/uml_draft.mmd` for the initial design and
 | Chronological sorting | `Scheduler.sort_by_time()` | Date then normalized HH:MM; stable for ties |
 | Filtering | `Scheduler.filter_tasks()` | Optional pet name, completion status, and date |
 | Conflict warnings | `Scheduler.detect_conflicts()` | Groups pending tasks at the same date and time across all pets |
+| Editing | `Scheduler.update_task()` | Validates changes before replacing a pending occurrence; preserves its ID |
 | Recurrence | `Scheduler.mark_task_complete()` | Creates a distinct pending task 1 or 7 days after the original due date |
 | Priority and time budget | `Scheduler.build_plan()` | Greedily selects high, medium, then low priority tasks that fit; returns chosen and skipped tasks |
 
@@ -59,7 +68,10 @@ count. Sorting costs O(n log n); filtering and recurrence lookup cost O(n).
    conflicting 08:00 tasks. Filter by pet or completion status.
 4. Click **Complete** beside breakfast. The occurrence becomes complete; change
    the view date to tomorrow to see its pending replacement.
-5. Set available care minutes to see which pending tasks fit. High priority tasks
+5. Open **Edit a pending task**, choose the task, change its duration or priority,
+   and click **Save changes**. The schedule and budget plan reflect the saved edits.
+   Completed occurrences stay locked to preserve their history.
+6. Set available care minutes to see which pending tasks fit. High priority tasks
    are considered first; skipped tasks are named below the plan.
 
 ### Sample Output
@@ -70,12 +82,13 @@ count. Sorting costs O(n log n); filtering and recurrence lookup cost O(n).
 Today's Schedule (2026-11-08)
 08:00 | Mochi | Breakfast (10 min, medium)
 08:00 | Luna  | Medication (5 min, high)
+12:00 | Luna  | Grooming (20 min, low)
 18:00 | Mochi | Evening walk (20 min, high)
 WARNING: Conflict on 2026-11-08 at 08:00: Mochi: Breakfast; Luna: Medication
 Pending Mochi tasks: 2
 Breakfast completed; next occurrence: 2026-11-09 at 08:00
 10-minute plan: Luna: Medication
-Skipped for time budget: 1
+Skipped for time budget: 2
 ```
 
 ## Testing PawPal+
@@ -86,23 +99,24 @@ python -m pytest
 
 Tests cover completion, adding tasks, multi-pet chronological sorting, filters,
 empty schedules, daily/weekly recurrence across year boundaries, repeat
-completion, one-time tasks, conflicts, priority budgets, and invalid inputs.
+completion, one-time tasks, conflicts, priority budgets, editing, and invalid inputs.
 
 Verification results are recorded below after running the checks.
 
 Successful run (Python 3.14.3; pytest 9.2.0):
 
 ```text
-collected 16 items
+collected 20 items
 
-tests/test_app.py .                                                      [  6%]
-tests/test_pawpal.py ...............                                     [100%]
+tests/test_app.py ..                                                     [ 10%]
+tests/test_pawpal.py ..................                                  [100%]
 
-============================== 16 passed in 2.17s ==============================
+============================== 20 passed in 3.55s ==============================
 ```
 
 The Streamlit AppTest adds two pets, submits a daily task, completes it, and
-checks the next occurrence and retained session data. In the Codex macOS sandbox,
+checks the next occurrence and retained session data. A second UI test edits a
+task, submits another invalid edit, and checks that the valid data remains intact. In the Codex macOS sandbox,
 Streamlit's table renderer timed out; the full suite passed outside the sandbox.
 No real browser or manual usability test was performed.
 
@@ -110,3 +124,10 @@ Engineering confidence: **4/5 stars** for the implemented scope, supported by
 these automated checks. Disk persistence, interval conflict detection, and
 browser verification remain future improvements. Add your own confidence
 assessment to the reflection after reviewing the app.
+
+## Requirement audit and design review
+
+See [REQUIREMENTS.md](REQUIREMENTS.md) for phase-by-phase evidence, design and
+algorithm review, the test plan, and outstanding submission steps. The repository
+was confirmed to be a public fork of the CodePath starter through the connected
+GitHub account. Optional extensions are separate from the required six phases.

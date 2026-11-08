@@ -1,5 +1,5 @@
 """Streamlit interface for the PawPal+ logic layer."""
-from datetime import date
+from datetime import date, datetime
 import streamlit as st
 from pawpal_system import Owner, Pet, Task, Scheduler
 
@@ -45,6 +45,33 @@ with st.form("add_task"):
             st.success("Task scheduled.")
         except ValueError as error:
             st.error(str(error))
+
+pending = scheduler.sort_by_time(completed=False)
+if pending:
+    with st.expander("Edit a pending task"):
+        labels = {task.id: f"{pet.name} · {task.due_date} {task.time} · {task.description}"
+                  for pet, task in pending}
+        edit_id = st.selectbox("Task to edit", list(labels), format_func=labels.get)
+        selected = next(task for _, task in pending if task.id == edit_id)
+        with st.form(f"edit_{edit_id}"):
+            edit_description = st.text_input("Description", selected.description, key=f"description_{edit_id}")
+            edit_date = st.date_input("New due date", selected.due_date, key=f"date_{edit_id}")
+            edit_time = st.time_input("New time", datetime.strptime(selected.time, "%H:%M").time(), key=f"time_{edit_id}")
+            frequencies = ["once", "daily", "weekly"]
+            edit_frequency = st.selectbox("Repeat", frequencies, index=frequencies.index(selected.frequency), key=f"frequency_{edit_id}")
+            edit_duration = st.number_input("New duration (minutes)", min_value=1,
+                                            max_value=240, value=selected.duration_minutes, key=f"duration_{edit_id}")
+            priorities = ["low", "medium", "high"]
+            edit_priority = st.selectbox("New priority", priorities, index=priorities.index(selected.priority), key=f"priority_{edit_id}")
+            if st.form_submit_button("Save changes"):
+                try:
+                    scheduler.update_task(edit_id, description=edit_description,
+                        time=edit_time.strftime("%H:%M"), due_date=edit_date,
+                        frequency=edit_frequency, duration_minutes=int(edit_duration),
+                        priority=edit_priority)
+                    st.success("Task updated. Schedule and plan reflect your changes below.")
+                except ValueError as error:
+                    st.error(str(error))
 
 st.subheader("Daily schedule")
 day = st.date_input("View date", value=date.today())

@@ -77,6 +77,20 @@ class Scheduler:
         """Return filtered task pairs ordered by date and normalized HH:MM."""
         return sorted(self.filter_tasks(**filters), key=lambda pair: (pair[1].due_date, pair[1].time))
 
+    def update_task(self, task_id, *, description, time, due_date, frequency,
+                    duration_minutes, priority):
+        """Validate and replace a pending occurrence while preserving its ID."""
+        for pet, task in self.owner.get_all_tasks():
+            if task.id == task_id:
+                if task.completed:
+                    raise ValueError("Completed occurrences cannot be edited.")
+                updated = replace(task, description=description, time=time,
+                                  due_date=due_date, frequency=frequency,
+                                  duration_minutes=duration_minutes, priority=priority)
+                pet.tasks[pet.tasks.index(task)] = updated
+                return updated
+        raise ValueError("Task not found.")
+
     def mark_task_complete(self, task_id):
         """Complete once and append the next daily or weekly occurrence."""
         for pet, task in self.owner.get_all_tasks():

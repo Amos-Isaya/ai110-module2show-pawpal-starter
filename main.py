@@ -14,6 +14,7 @@ def main():
     breakfast = Task("Breakfast", "08:00", today, frequency="daily", duration_minutes=10)
     mochi.add_task(breakfast)
     luna.add_task(Task("Medication", "08:00", today, priority="high", duration_minutes=5))
+    luna.add_task(Task("Grooming", "12:00", today, priority="low"))
     scheduler = Scheduler(owner)
     print(f"Today's Schedule ({today})")
     for pet, task in scheduler.sort_by_time(on_date=today):

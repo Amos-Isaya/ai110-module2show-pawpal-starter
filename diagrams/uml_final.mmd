@@ -31,6 +31,7 @@ classDiagram
         owner: Owner
         filter_tasks(pet_name, completed, on_date) list
         sort_by_time(filters) list
+        update_task(task_id, changes) Task
         mark_task_complete(task_id) Task
         detect_conflicts(on_date) list
         build_plan(on_date, available_minutes) tuple
