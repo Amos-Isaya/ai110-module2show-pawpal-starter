@@ -1,94 +1,112 @@
-# PawPal+ (Module 2 Project)
+# PawPal+
 
-You are building **PawPal+**, a Streamlit app that helps a pet owner plan care tasks for their pet.
+A Python and Streamlit pet care planner for multiple pets. Track feeding, walks,
+medication, and appointments; filter daily schedules; complete recurring tasks;
+and plan care within an available time budget.
 
-## Scenario
-
-A busy pet owner needs help staying consistent with pet care. They want an assistant that can:
-
-- Track pet care tasks (walks, feeding, meds, enrichment, grooming, etc.)
-- Consider constraints (time available, priority, owner preferences)
-- Produce a daily plan and explain why it chose that plan
-
-Your job is to design the system first (UML), then implement the logic in Python, then connect it to the Streamlit UI.
-
-## What you will build
-
-Your final app should:
-
-- Let a user enter basic owner + pet info
-- Let a user add/edit tasks (duration + priority at minimum)
-- Generate a daily schedule/plan based on constraints and priorities
-- Display the plan clearly (and ideally explain the reasoning)
-- Include tests for the most important scheduling behaviors
-
-## Getting started
-
-### Setup
+## Run locally
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python main.py
+python -m streamlit run app.py
 ```
 
-### Suggested workflow
+On Windows PowerShell, activate with `.venv\Scripts\Activate.ps1`.
+The UI stores its Owner object in Streamlit session state. Data survives UI
+reruns, but is not saved to disk and may be lost when the session ends.
 
-1. Read the scenario carefully and identify requirements and edge cases.
-2. Draft a UML diagram (classes, attributes, methods, relationships).
-3. Convert UML into Python class stubs (no logic yet).
-4. Implement scheduling logic in small increments.
-5. Add tests to verify key behaviors.
-6. Connect your logic to the Streamlit UI in `app.py`.
-7. Refine UML so it matches what you actually built.
+## Implementation summary
 
-## 🖥️ Sample Output
+`pawpal_system.py` contains four classes independent of the UI. `Task` and `Pet`
+are dataclasses; `Owner` manages pets and exposes every `(pet, task)` pair through
+`get_all_tasks()`. `Scheduler` uses that aggregate interface for every operation,
+so all pets participate in scheduling. `main.py` verifies the backend without
+Streamlit. `app.py` calls the same methods from forms and completion buttons.
 
-Paste a sample of your app's CLI or Streamlit output here so a reader can see what a generated plan looks like:
+See `diagrams/uml_draft.mmd` for the initial design and
+`diagrams/uml_final.mmd` for the implemented architecture.
 
+## Smarter Scheduling
+
+| Feature | Method | Behavior |
+| --- | --- | --- |
+| Chronological sorting | `Scheduler.sort_by_time()` | Date then normalized HH:MM; stable for ties |
+| Filtering | `Scheduler.filter_tasks()` | Optional pet name, completion status, and date |
+| Conflict warnings | `Scheduler.detect_conflicts()` | Groups pending tasks at the same date and time across all pets |
+| Recurrence | `Scheduler.mark_task_complete()` | Creates a distinct pending task 1 or 7 days after the original due date |
+| Priority and time budget | `Scheduler.build_plan()` | Greedily selects high, medium, then low priority tasks that fit; returns chosen and skipped tasks |
+
+Completing an already completed occurrence creates no additional tasks. Use the
+Scheduler completion method to generate recurrence; `Task.mark_complete()` alone
+only changes the status. Recurrence advances from the scheduled date, including
+for overdue tasks, and creates one occurrence at a time.
+
+Conflict detection compares exact start times, not overlapping durations. The
+budget is total care time, not a calendar availability window. Plans preserve
+entered start times and display warnings rather than automatically moving tasks.
+The greedy budget algorithm favors priority and simplicity over maximizing task
+count. Sorting costs O(n log n); filtering and recurrence lookup cost O(n).
+
+## Demo Walkthrough
+
+1. Enter the owner's name, then add Mochi and Luna using **Add pet**.
+2. Schedule breakfast for Mochi at 08:00 with daily frequency. Schedule medication
+   for Luna at 08:00 and a later walk for Mochi.
+3. View that date's chronologically sorted schedule. A warning names both
+   conflicting 08:00 tasks. Filter by pet or completion status.
+4. Click **Complete** beside breakfast. The occurrence becomes complete; change
+   the view date to tomorrow to see its pending replacement.
+5. Set available care minutes to see which pending tasks fit. High priority tasks
+   are considered first; skipped tasks are named below the plan.
+
+### Sample Output
+
+`python main.py` uses a fixed demonstration date for reproducible output:
+
+```text
+Today's Schedule (2026-11-08)
+08:00 | Mochi | Breakfast (10 min, medium)
+08:00 | Luna  | Medication (5 min, high)
+18:00 | Mochi | Evening walk (20 min, high)
+WARNING: Conflict on 2026-11-08 at 08:00: Mochi: Breakfast; Luna: Medication
+Pending Mochi tasks: 2
+Breakfast completed; next occurrence: 2026-11-09 at 08:00
+10-minute plan: Luna: Medication
+Skipped for time budget: 1
 ```
-# e.g.:
-# Daily plan for Biscuit (Golden Retriever):
-#   08:00 — Morning walk (30 min) [priority: high]
-#   09:00 — Feeding (10 min) [priority: high]
-#   ...
-```
 
-## 🧪 Testing PawPal+
+## Testing PawPal+
 
 ```bash
-# Run the full test suite:
-pytest
-
-# Run with coverage:
-pytest --cov
+python -m pytest
 ```
 
-Sample test output:
+Tests cover completion, adding tasks, multi-pet chronological sorting, filters,
+empty schedules, daily/weekly recurrence across year boundaries, repeat
+completion, one-time tasks, conflicts, priority budgets, and invalid inputs.
 
+Verification results are recorded below after running the checks.
+
+Successful run (Python 3.14.3; pytest 9.2.0):
+
+```text
+collected 16 items
+
+tests/test_app.py .                                                      [  6%]
+tests/test_pawpal.py ...............                                     [100%]
+
+============================== 16 passed in 2.17s ==============================
 ```
-# Paste your pytest output here
-```
 
-## 📐 Smarter Scheduling
+The Streamlit AppTest adds two pets, submits a daily task, completes it, and
+checks the next occurrence and retained session data. In the Codex macOS sandbox,
+Streamlit's table renderer timed out; the full suite passed outside the sandbox.
+No real browser or manual usability test was performed.
 
-> Fill in once you've implemented scheduling logic.
-
-| Feature | Method(s) | Notes |
-|---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
-
-## 📸 Demo Walkthrough
-
-Describe your app in numbered steps so a reader can follow along without watching a video:
-
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
-
-**Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
+Engineering confidence: **4/5 stars** for the implemented scope, supported by
+these automated checks. Disk persistence, interval conflict detection, and
+browser verification remain future improvements. Add your own confidence
+assessment to the reflection after reviewing the app.
