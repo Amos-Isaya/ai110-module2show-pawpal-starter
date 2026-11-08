@@ -1,0 +1,37 @@
+classDiagram
+    Owner "1" o-- "0..*" Pet : owns
+    Pet "1" *-- "0..*" Task : stores occurrences
+    Scheduler --> Owner : get_all_tasks
+    Scheduler ..> Task : creates next occurrence
+    class Owner {
+        name: str
+        pets: list~Pet~
+        add_pet(pet)
+        get_all_tasks() list
+    }
+    class Pet {
+        name: str
+        species: str
+        tasks: list~Task~
+        add_task(task)
+    }
+    class Task {
+        description: str
+        time: str
+        due_date: date
+        frequency: str
+        duration_minutes: int
+        priority: str
+        completed: bool
+        id: str
+        __post_init__()
+        mark_complete()
+    }
+    class Scheduler {
+        owner: Owner
+        filter_tasks(pet_name, completed, on_date) list
+        sort_by_time(filters) list
+        mark_task_complete(task_id) Task
+        detect_conflicts(on_date) list
+        build_plan(on_date, available_minutes) tuple
+    }
