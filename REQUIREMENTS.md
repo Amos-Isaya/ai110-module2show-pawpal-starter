@@ -79,8 +79,10 @@ participation.
 - Public fork: confirmed through connected GitHub metadata for
   `Amos-Isaya/ai110-module2show-pawpal-starter`, forked from CodePath's starter.
 - Required code, diagrams, tests, README, reflection: present.
-- Multiple meaningful commits: present; final audit work must also be committed.
-- Push: verify the final local HEAD matches remote main after publishing.
+- Multiple meaningful commits: present, including the final implementation audit.
+- Push: pending destination-specific user approval. Automatic approval review
+  rejected publishing to the remote without that confirmation. After publishing,
+  verify the final local HEAD matches remote main.
 - Deadline: none was supplied, so on-time submission cannot be verified here.
 - Course submission: the student must use the course's Submit button. No course
   submission session or button is available in this workspace.
